@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GenImort - Protótipo 2.5D</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="hud-shell">
+      <aside class="panel left-panel">
+        <h1>GenImort</h1>
+        <p class="tagline">Mundo aberto 2.5D com combate, exploração e progressão.</p>
+
+        <section class="stat-block">
+          <div><span>HP</span><strong id="hpValue">100 / 100</strong></div>
+          <div><span>Energia</span><strong id="energyValue">100 / 100</strong></div>
+          <div><span>Nível</span><strong id="levelValue">1</strong></div>
+          <div><span>XP</span><strong id="xpValue">0 / 40</strong></div>
+          <div><span>Pontos de Skill</span><strong id="skillPointsValue">0</strong></div>
+        </section>
+
+        <section>
+          <h2>Inventário</h2>
+          <ul class="inventory" id="inventoryList"></ul>
+        </section>
+
+        <section>
+          <h2>Controles</h2>
+          <ul class="controls">
+            <li><kbd>WASD</kbd> mover</li>
+            <li><kbd>Shift</kbd> correr</li>
+            <li><kbd>J</kbd> ataque básico</li>
+            <li><kbd>K</kbd> skill giratória</li>
+            <li><kbd>E</kbd> interagir / coletar / abrir baú</li>
+          </ul>
+        </section>
+      </aside>
+
+      <main class="center-panel">
+        <div class="topbar">
+          <div id="questText">Explore, lute e fortaleça seu herói.</div>
+          <div id="statusText">Procure recursos, baús e inimigos pelo mapa.</div>
+        </div>
+        <canvas id="gameCanvas" width="1100" height="620"></canvas>
+      </main>
+
+      <aside class="panel right-panel">
+        <section>
+          <h2>Árvore de Skills</h2>
+          <div class="skill-tree" id="skillTree"></div>
+          <p class="skill-note">Clique em uma skill para desbloquear quando tiver pontos.</p>
+        </section>
+
+        <section>
+          <h2>Objetivos</h2>
+          <ul class="objectives" id="objectiveList"></ul>
+        </section>
+
+        <section>
+          <h2>Log de Exploração</h2>
+          <div class="log" id="logPanel"></div>
+        </section>
+      </aside>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
