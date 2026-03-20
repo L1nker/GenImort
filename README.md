@@ -4,13 +4,13 @@ Protótipo web de um jogo 2.5D inspirado no ritmo de combate de action RPGs isom
 
 ## Conteúdo jogável
 
-- mapa aberto 2.5D com câmera seguindo o herói;
-- herói guerreiro e monstros desenhados no canvas com animações de idle, movimento e ataque;
-- baús escondidos com ouro e progressão de objetivos;
-- recursos coletáveis representados por árvores, cristais e ervas animadas;
-- chão detalhado com graminhas e relevo estilizado;
-- evolução com XP, níveis e árvore de skills;
-- skill ativa de ataque em área e sistema simples de energia.
+- mapa aberto ampliado, com câmera seguindo o herói por uma área muito maior;
+- herói guerreiro e monstros desenhados em sprites de canvas mais detalhados;
+- chão com relevo, caminhos, pedras, biomas e graminhas animadas;
+- baús escondidos com raridade e respawn ao longo da exploração;
+- recursos coletáveis representados por árvores, cristais e ervas animadas, também com respawn;
+- evolução com XP, níveis, mais objetivos e árvore de skills expandida;
+- skill ativa de ataque em área, combate contínuo e ciclos de conteúdo para o jogo não acabar rápido.
 
 ## Como rodar
 
