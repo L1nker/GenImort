@@ -12,6 +12,13 @@ const logPanel = document.getElementById('logPanel');
 const statusText = document.getElementById('statusText');
 const questText = document.getElementById('questText');
 const skillTree = document.getElementById('skillTree');
+const hpFill = document.getElementById('hpFill');
+const energyFill = document.getElementById('energyFill');
+const xpFill = document.getElementById('xpFill');
+const minimapCanvas = document.getElementById('minimapCanvas');
+const minimapCtx = minimapCanvas.getContext('2d');
+const menuOverlay = document.getElementById('menuOverlay');
+const closeMenuButton = document.getElementById('closeMenuButton');
 
 const world = { width: 5200, height: 3800 };
 const keys = new Set();
@@ -28,6 +35,7 @@ const createSpriteCanvas = (width, height) => {
 
 let elapsed = 0;
 let lastTime = performance.now();
+let isMenuOpen = false;
 
 const terrainKnolls = Array.from({ length: 96 }, () => ({
   x: random(80, world.width - 80),
@@ -258,6 +266,9 @@ function updateHud() {
   inventoryList.innerHTML = Object.entries(player.inventory)
     .map(([item, amount]) => `<li>${item}: ${amount}</li>`)
     .join('');
+  hpFill.style.width = `${(player.hp / player.maxHp) * 100}%`;
+  energyFill.style.width = `${(player.energy / player.maxEnergy) * 100}%`;
+  xpFill.style.width = `${(player.xp / player.nextLevelXp) * 100}%`;
 }
 
 function handleInput() {
@@ -911,9 +922,77 @@ function drawWorld() {
   drawHero();
 }
 
+function drawMinimap() {
+  const size = minimapCanvas.width;
+  minimapCtx.clearRect(0, 0, size, size);
+  minimapCtx.save();
+  minimapCtx.beginPath();
+  minimapCtx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+  minimapCtx.clip();
+
+  const gradient = minimapCtx.createRadialGradient(size / 2, size / 2, 20, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, '#33552e');
+  gradient.addColorStop(1, '#16231d');
+  minimapCtx.fillStyle = gradient;
+  minimapCtx.fillRect(0, 0, size, size);
+
+  const plot = (x, y) => ({
+    x: (x / world.width) * size,
+    y: (y / world.height) * size,
+  });
+
+  resources.forEach((resource) => {
+    if (resource.collected) return;
+    const point = plot(resource.x, resource.y);
+    minimapCtx.fillStyle = resource.type === 'madeira' ? '#59a85f' : resource.type === 'cristal' ? '#77eaff' : '#baf57f';
+    minimapCtx.fillRect(point.x - 1, point.y - 1, 3, 3);
+  });
+
+  chests.forEach((chest) => {
+    if (chest.opened) return;
+    const point = plot(chest.x, chest.y);
+    minimapCtx.fillStyle = chest.rarity === 'rare' ? '#e4a4ff' : '#f5cd68';
+    minimapCtx.beginPath();
+    minimapCtx.arc(point.x, point.y, 2.2, 0, Math.PI * 2);
+    minimapCtx.fill();
+  });
+
+  enemies.forEach((enemy) => {
+    if (!enemy.alive) return;
+    const point = plot(enemy.x, enemy.y);
+    minimapCtx.fillStyle = '#ff6d8d';
+    minimapCtx.beginPath();
+    minimapCtx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+    minimapCtx.fill();
+  });
+
+  const playerPoint = plot(player.x, player.y);
+  minimapCtx.strokeStyle = 'rgba(255,255,255,0.16)';
+  minimapCtx.lineWidth = 1;
+  minimapCtx.beginPath();
+  minimapCtx.arc(playerPoint.x, playerPoint.y, 20, 0, Math.PI * 2);
+  minimapCtx.stroke();
+  minimapCtx.fillStyle = '#19f0d4';
+  minimapCtx.beginPath();
+  minimapCtx.arc(playerPoint.x, playerPoint.y, 4.2, 0, Math.PI * 2);
+  minimapCtx.fill();
+  minimapCtx.restore();
+}
+
 function updateCamera() {
   camera.x = clamp(player.x - canvas.width / 2, 0, world.width - canvas.width);
   camera.y = clamp(player.y - canvas.height / 2, 0, world.height - canvas.height);
+}
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function setMenuOpen(open) {
+  isMenuOpen = open;
+  menuOverlay.classList.toggle('hidden', !open);
+  if (open) keys.clear();
 }
 
 function tickAnimations() {
@@ -926,12 +1005,14 @@ function tickAnimations() {
 function loop(now = performance.now()) {
   const delta = now - lastTime;
   lastTime = now;
-  elapsed += delta;
 
-  handleInput();
-  updateResources(delta);
-  updateEnemies(delta);
-  tickAnimations();
+  if (!isMenuOpen) {
+    elapsed += delta;
+    handleInput();
+    updateResources(delta);
+    updateEnemies(delta);
+    tickAnimations();
+  }
 
   if (player.hp <= 0) {
     player.hp = player.maxHp;
@@ -945,21 +1026,33 @@ function loop(now = performance.now()) {
   statusText.textContent = `Recursos reaparecem, baús retornam e monstros seguem rondando o mundo.`;
   updateCamera();
   drawWorld();
+  drawMinimap();
   updateHud();
   requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', (event) => {
-  keys.add(event.key.toLowerCase());
-  if (event.key.toLowerCase() === 'j') attack();
-  if (event.key.toLowerCase() === 'k') spinSkill();
-  if (event.key.toLowerCase() === 'e') interact();
+  const key = event.key.toLowerCase();
+  if (key === 'enter') {
+    event.preventDefault();
+    setMenuOpen(!isMenuOpen);
+    return;
+  }
+  if (isMenuOpen) return;
+  keys.add(key);
+  if (key === 'j') attack();
+  if (key === 'k') spinSkill();
+  if (key === 'e') interact();
 });
 
 document.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
+window.addEventListener('resize', resizeCanvas);
+closeMenuButton.addEventListener('click', () => setMenuOpen(false));
 
+resizeCanvas();
 renderObjectives();
 renderSkillTree();
 updateHud();
-addLog('Bem-vindo ao GenImort expandido. Agora o mundo é maior e o conteúdo reaparece com o tempo.');
+drawMinimap();
+addLog('Bem-vindo ao GenImort expandido. Pressione Enter para abrir o menu principal.');
 loop();

@@ -7,61 +7,87 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="hud-shell">
-      <aside class="panel left-panel">
-        <h1>GenImort</h1>
-        <p class="tagline">Mundo aberto 2.5D com combate, exploração e progressão.</p>
+    <div class="game-shell">
+      <canvas id="gameCanvas" width="1600" height="900"></canvas>
 
-        <section class="stat-block">
-          <div><span>HP</span><strong id="hpValue">100 / 100</strong></div>
-          <div><span>Energia</span><strong id="energyValue">100 / 100</strong></div>
-          <div><span>Nível</span><strong id="levelValue">1</strong></div>
-          <div><span>XP</span><strong id="xpValue">0 / 40</strong></div>
-          <div><span>Pontos de Skill</span><strong id="skillPointsValue">0</strong></div>
+      <div class="hud-overlay">
+        <section class="hud-panel stat-cluster">
+          <div class="portrait-badge">GI</div>
+          <div class="bars-wrap">
+            <div class="bar-group">
+              <div class="bar-label-row"><span>HP</span><strong id="hpValue">120 / 120</strong></div>
+              <div class="status-bar hp-bar"><div id="hpFill"></div></div>
+            </div>
+            <div class="bar-group">
+              <div class="bar-label-row"><span>MP</span><strong id="energyValue">100 / 100</strong></div>
+              <div class="status-bar mp-bar"><div id="energyFill"></div></div>
+            </div>
+            <div class="bar-group xp-group">
+              <div class="bar-label-row small-row">
+                <span>Nível <strong id="levelValue">1</strong></span>
+                <span>Skill <strong id="skillPointsValue">0</strong></span>
+              </div>
+              <div class="status-bar xp-bar"><div id="xpFill"></div></div>
+              <div class="bar-label-row"><span>XP</span><strong id="xpValue">0 / 55</strong></div>
+            </div>
+          </div>
         </section>
 
-        <section>
-          <h2>Inventário</h2>
-          <ul class="inventory" id="inventoryList"></ul>
+        <section class="hud-panel minimap-panel">
+          <canvas id="minimapCanvas" width="180" height="180"></canvas>
+          <div class="minimap-caption">Mapa local</div>
         </section>
 
-        <section>
-          <h2>Controles</h2>
-          <ul class="controls">
-            <li><kbd>WASD</kbd> mover</li>
-            <li><kbd>Shift</kbd> correr</li>
-            <li><kbd>J</kbd> ataque básico</li>
-            <li><kbd>K</kbd> skill giratória</li>
-            <li><kbd>E</kbd> interagir / coletar / abrir baú</li>
-          </ul>
+        <section class="hud-panel mission-panel">
+          <h2>Missões</h2>
+          <ul class="mission-list" id="objectiveList"></ul>
         </section>
-      </aside>
 
-      <main class="center-panel">
-        <div class="topbar">
-          <div id="questText">Explore, lute e fortaleça seu herói.</div>
-          <div id="statusText">Procure recursos, baús e inimigos pelo mapa.</div>
+        <section class="log-panel" id="logPanel"></section>
+
+        <div class="bottom-center-hud">
+          <div class="status-ticker" id="questText">Explore, lute e fortaleça seu herói.</div>
+          <div class="status-ticker alt" id="statusText">Procure recursos, baús e inimigos pelo mapa.</div>
+          <div class="hint-line">Pressione <kbd>Enter</kbd> para abrir o menu principal</div>
         </div>
-        <canvas id="gameCanvas" width="1100" height="620"></canvas>
-      </main>
+      </div>
 
-      <aside class="panel right-panel">
-        <section>
-          <h2>Árvore de Skills</h2>
-          <div class="skill-tree" id="skillTree"></div>
-          <p class="skill-note">Clique em uma skill para desbloquear quando tiver pontos.</p>
-        </section>
+      <div class="menu-overlay hidden" id="menuOverlay">
+        <div class="menu-window">
+          <header class="menu-header">
+            <div>
+              <h1>Menu Principal</h1>
+              <p>Jogo pausado. Gerencie build, inventário e controles.</p>
+            </div>
+            <button id="closeMenuButton" class="menu-close">Fechar</button>
+          </header>
 
-        <section>
-          <h2>Objetivos</h2>
-          <ul class="objectives" id="objectiveList"></ul>
-        </section>
+          <div class="menu-grid">
+            <section class="menu-card">
+              <h2>Controles</h2>
+              <ul class="controls">
+                <li><kbd>WASD</kbd> mover</li>
+                <li><kbd>Shift</kbd> correr</li>
+                <li><kbd>J</kbd> ataque básico</li>
+                <li><kbd>K</kbd> skill giratória</li>
+                <li><kbd>E</kbd> interagir / coletar / abrir baú</li>
+                <li><kbd>Enter</kbd> abrir/fechar menu</li>
+              </ul>
+            </section>
 
-        <section>
-          <h2>Log de Exploração</h2>
-          <div class="log" id="logPanel"></div>
-        </section>
-      </aside>
+            <section class="menu-card">
+              <h2>Inventário</h2>
+              <ul class="inventory" id="inventoryList"></ul>
+            </section>
+
+            <section class="menu-card span-2">
+              <h2>Árvore de Skills</h2>
+              <div class="skill-tree" id="skillTree"></div>
+              <p class="skill-note">Clique em uma skill para desbloquear quando tiver pontos.</p>
+            </section>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="game.js"></script>
