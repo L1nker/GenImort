@@ -15,6 +15,16 @@ Protótipo web de um jogo 2.5D inspirado no ritmo de combate de action RPGs isom
 - evolução com XP, níveis, mais objetivos e árvore de skills expandida;
 - skill ativa de ataque em área, combate contínuo e ciclos de conteúdo para o jogo não acabar rápido.
 
+## Estrutura de assets
+
+Sprites e imagens futuras devem ser colocadas em:
+
+- `assets/images/characters/hero/` para sprites do herói;
+- `assets/images/items/` para itens de inventário, baús e crafting;
+- `assets/images/resources/` para madeira, cristal, erva e outros coletáveis;
+- `assets/images/enemies/` para monstros e variações;
+- `assets/images/ui/` para molduras, ícones e elementos de interface.
+
 ## Como rodar
 
 Abra o arquivo `index.html` no navegador.
