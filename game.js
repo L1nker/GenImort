@@ -152,6 +152,7 @@ const player = {
   attackAnim: 0,
   spinAnim: 0,
   facing: 1,
+  direction: 's',
   moveX: 0,
   moveY: 0,
   isMoving: false,
@@ -419,6 +420,7 @@ function handleInput() {
   player.moveX = dx / length;
   player.moveY = dy / length;
   if (dx) player.facing = dx > 0 ? 1 : -1;
+  player.direction = getDirectionFromVector(player.moveX, player.moveY, player.direction);
 
   if (player.isMoving) {
     player.x += player.moveX * speed;
@@ -924,61 +926,205 @@ function drawGauntletIcon(s, bodyColor, trimColor) {
   s.fillRect(-8, -2, 12, 5);
 }
 
-function makeHeroSprite() {
+function getDirectionFromVector(x, y, fallback = 's') {
+  if (Math.abs(x) < 0.08 && Math.abs(y) < 0.08) return fallback;
+  const angle = Math.atan2(y, x);
+  const octants = [
+    { key: 'e', min: -Math.PI / 8, max: Math.PI / 8 },
+    { key: 'se', min: Math.PI / 8, max: 3 * Math.PI / 8 },
+    { key: 's', min: 3 * Math.PI / 8, max: 5 * Math.PI / 8 },
+    { key: 'sw', min: 5 * Math.PI / 8, max: 7 * Math.PI / 8 },
+    { key: 'w', min: 7 * Math.PI / 8, max: Math.PI },
+    { key: 'w', min: -Math.PI, max: -7 * Math.PI / 8 },
+    { key: 'nw', min: -7 * Math.PI / 8, max: -5 * Math.PI / 8 },
+    { key: 'n', min: -5 * Math.PI / 8, max: -3 * Math.PI / 8 },
+    { key: 'ne', min: -3 * Math.PI / 8, max: -Math.PI / 8 },
+  ];
+  return (octants.find((entry) => angle >= entry.min && angle < entry.max) || { key: fallback }).key;
+}
+
+function makeHeroSprite(direction) {
   const { sprite, ctx: s } = createSpriteCanvas(180, 180);
-  s.imageSmoothingEnabled = true;
-  s.translate(90, 120);
-  s.fillStyle = '#2d2118';
+  s.imageSmoothingEnabled = false;
+  s.translate(90, 122);
+
+  const facingRight = ['e', 'ne', 'se'].includes(direction);
+  const facingLeft = ['w', 'nw', 'sw'].includes(direction);
+  const facingBack = ['n', 'ne', 'nw'].includes(direction);
+  const facingFront = ['s', 'se', 'sw'].includes(direction) || direction === 'idle';
+  const diagonal = ['ne', 'nw', 'se', 'sw'].includes(direction);
+
+  const capeColor = facingBack ? '#707553' : '#5f6548';
+  const capeShade = facingBack ? '#555a42' : '#4f5440';
+  const leather = '#7b4d31';
+  const leatherDark = '#5d3722';
+  const steel = '#bac3d1';
+  const steelDark = '#7b8797';
+  const cloth = '#f1ece1';
+  const skin = '#d4a27b';
+  const hair = '#7a4a2b';
+  const pants = '#43454c';
+
+  s.fillStyle = 'rgba(27,36,42,0.35)';
   s.beginPath();
-  s.ellipse(0, 34, 28, 12, 0, 0, Math.PI * 2);
+  s.ellipse(0, 34, 28, 8, 0, 0, Math.PI * 2);
   s.fill();
-  s.fillStyle = '#6d4b33';
-  s.fillRect(-18, 34, 12, 28);
-  s.fillRect(6, 34, 12, 28);
-  s.fillStyle = '#9aabb7';
+
+  if (facingBack) {
+    s.fillStyle = capeColor;
+    s.beginPath();
+    s.moveTo(-28, -30);
+    s.quadraticCurveTo(0, -54, 28, -30);
+    s.lineTo(34, 22);
+    s.quadraticCurveTo(0, 48, -34, 22);
+    s.closePath();
+    s.fill();
+    s.fillStyle = capeShade;
+    s.fillRect(-6, -14, 12, 42);
+  }
+
+  const bodyTurn = facingRight ? 14 : facingLeft ? -14 : 0;
+  const shieldSide = facingLeft ? -30 : facingRight ? 30 : facingFront ? 24 : -24;
+  const swordSide = facingLeft ? 24 : facingRight ? -24 : facingFront ? -20 : 20;
+
+  s.fillStyle = cloth;
+  s.fillRect(-17 + bodyTurn * 0.2, -28, 34, 40);
+  s.fillStyle = leather;
+  s.fillRect(-18 + bodyTurn * 0.2, 8, 36, 16);
+  s.fillStyle = leatherDark;
+  s.fillRect(-18 + bodyTurn * 0.2, -6, 36, 5);
+  s.fillRect(-6 + bodyTurn * 0.2, -20, 12, 44);
+
+  s.fillStyle = leather;
+  s.save();
+  s.translate(0, -10);
+  s.rotate(facingLeft ? -0.55 : facingRight ? 0.55 : 0);
+  s.fillRect(-24, -2, 48, 6);
+  s.restore();
+
+  s.fillStyle = pants;
+  s.fillRect(-14, 24, 11, 30);
+  s.fillRect(3, 24, 11, 30);
+  s.fillStyle = leather;
+  s.fillRect(-16, 48, 13, 28);
+  s.fillRect(3, 48, 13, 28);
+  s.fillStyle = steel;
+  s.fillRect(-17, 42, 15, 10);
+  s.fillRect(2, 42, 15, 10);
+
+  s.fillStyle = skin;
+  if (!facingBack) {
+    s.fillRect(-28 + (facingRight ? 8 : 0), -20, 12, 28);
+    s.fillRect(16 - (facingLeft ? 8 : 0), -20, 12, 28);
+  } else {
+    s.fillRect(-24, -18, 10, 26);
+    s.fillRect(14, -18, 10, 26);
+  }
+  s.fillStyle = leather;
+  if (!facingBack) {
+    s.fillRect(-29 + (facingRight ? 8 : 0), -2, 14, 16);
+    s.fillRect(15 - (facingLeft ? 8 : 0), -2, 14, 16);
+  }
+
+  s.save();
+  s.translate(shieldSide, 8);
+  if (facingBack) s.translate(shieldSide > 0 ? -4 : 4, -4);
+  s.fillStyle = '#6b4128';
   s.beginPath();
-  s.moveTo(-26, -12);
-  s.lineTo(-12, -52);
-  s.lineTo(12, -52);
-  s.lineTo(26, -12);
-  s.lineTo(20, 26);
-  s.lineTo(-20, 26);
+  s.arc(0, 0, facingBack ? 16 : 18, 0, Math.PI * 2);
+  s.fill();
+  s.strokeStyle = steelDark;
+  s.lineWidth = 4;
+  s.stroke();
+  s.fillStyle = steel;
+  s.beginPath();
+  s.arc(0, 0, 5, 0, Math.PI * 2);
+  s.fill();
+  s.restore();
+
+  s.save();
+  s.translate(swordSide, -30);
+  s.rotate(facingLeft ? 0.65 : facingRight ? -0.65 : facingBack ? 0.15 : -0.15);
+  s.fillStyle = leatherDark;
+  s.fillRect(-3, -4, 6, 34);
+  s.fillStyle = steel;
+  s.fillRect(-8, -2, 16, 4);
+  s.beginPath();
+  s.moveTo(-4, -34);
+  s.lineTo(0, -42);
+  s.lineTo(4, -34);
   s.closePath();
   s.fill();
-  s.fillStyle = '#2e5f9d';
-  s.fillRect(-18, -6, 36, 24);
-  s.fillStyle = '#d7b38a';
-  s.beginPath();
-  s.arc(0, -64, 20, 0, Math.PI * 2);
-  s.fill();
-  s.fillStyle = '#4e3728';
-  s.beginPath();
-  s.moveTo(-22, -66);
-  s.quadraticCurveTo(0, -92, 22, -66);
-  s.lineTo(20, -52);
-  s.lineTo(-20, -52);
-  s.closePath();
-  s.fill();
-  s.fillStyle = '#657687';
-  s.fillRect(-38, -8, 14, 44);
-  s.fillRect(24, -8, 14, 44);
-  s.fillStyle = '#d7b38a';
-  s.beginPath();
-  s.arc(-30, 36, 8, 0, Math.PI * 2);
-  s.arc(30, 36, 8, 0, Math.PI * 2);
-  s.fill();
-  s.fillStyle = '#8f9fb2';
-  s.fillRect(34, -18, 8, 86);
-  s.fillStyle = '#dfe9f1';
-  s.beginPath();
-  s.moveTo(26, -84);
-  s.lineTo(48, -34);
-  s.lineTo(40, 10);
-  s.lineTo(22, -38);
-  s.closePath();
-  s.fill();
-  s.fillStyle = '#8b5a2b';
-  s.fillRect(24, -22, 24, 8);
+  s.restore();
+
+  if (!facingBack) {
+    s.fillStyle = skin;
+    s.beginPath();
+    s.arc(0, -46, 18, 0, Math.PI * 2);
+    s.fill();
+    s.fillStyle = hair;
+    s.beginPath();
+    s.moveTo(-18, -48);
+    s.quadraticCurveTo(0, -68, 18, -48);
+    s.lineTo(16, -36);
+    s.lineTo(-14, -36);
+    s.closePath();
+    s.fill();
+    s.fillStyle = hair;
+    s.fillRect(-8, -30, 16, 8);
+    s.fillStyle = '#54311b';
+    s.beginPath();
+    s.moveTo(-8, -22);
+    s.lineTo(0, -12);
+    s.lineTo(8, -22);
+    s.closePath();
+    s.fill();
+    s.fillStyle = '#1d2b3f';
+    if (!facingLeft) s.fillRect(2, -48, 3, 3);
+    if (!facingRight) s.fillRect(-5, -48, 3, 3);
+  } else {
+    s.fillStyle = hair;
+    s.beginPath();
+    s.arc(0, -48, 18, 0, Math.PI * 2);
+    s.fill();
+    s.fillStyle = steel;
+    s.fillRect(-20, -32, 40, 6);
+  }
+
+  s.fillStyle = capeColor;
+  if (!facingBack) {
+    if (facingFront) {
+      s.beginPath();
+      s.moveTo(-24, -28);
+      s.lineTo(10, -18);
+      s.lineTo(28, 30);
+      s.lineTo(10, 40);
+      s.lineTo(-22, 6);
+      s.closePath();
+      s.fill();
+    } else {
+      const dir = facingRight ? -1 : 1;
+      s.beginPath();
+      s.moveTo(-14 * dir, -30);
+      s.quadraticCurveTo(42 * dir, -12, 30 * dir, 30);
+      s.quadraticCurveTo(4 * dir, 36, -20 * dir, 8);
+      s.closePath();
+      s.fill();
+    }
+    s.fillStyle = capeShade;
+    s.beginPath();
+    s.moveTo(0, -28);
+    s.lineTo(10, 28);
+    s.lineTo(-2, 30);
+    s.closePath();
+    s.fill();
+  }
+
+  if (diagonal) {
+    s.fillStyle = 'rgba(255,255,255,0.06)';
+    s.fillRect(-12, -10, 24, 36);
+  }
+
   return sprite;
 }
 
@@ -1054,7 +1200,17 @@ function makeEnemySprite(variant) {
   return sprite;
 }
 
-const heroSprite = makeHeroSprite();
+const heroSpriteMap = {
+  idle: makeHeroSprite('idle'),
+  n: makeHeroSprite('n'),
+  ne: makeHeroSprite('ne'),
+  e: makeHeroSprite('e'),
+  se: makeHeroSprite('se'),
+  s: makeHeroSprite('s'),
+  sw: makeHeroSprite('sw'),
+  w: makeHeroSprite('w'),
+  nw: makeHeroSprite('nw'),
+};
 const enemySpriteMap = {
   fang: makeEnemySprite('fang'),
   moss: makeEnemySprite('moss'),
@@ -1323,9 +1479,10 @@ function drawHero() {
   const spinAura = player.spinAnim > 0 ? 1 - player.spinAnim / 28 : 0;
 
   drawShadow(x, y + 32, 28, 11, 0.24);
+  const activeDirection = player.isMoving ? player.direction : 'idle';
+
   ctx.save();
   ctx.translate(x, y - bodyBob);
-  ctx.scale(player.facing, 1);
 
   if (player.spinAnim > 0) {
     ctx.beginPath();
@@ -1337,27 +1494,28 @@ function drawHero() {
 
   ctx.save();
   ctx.translate(0, stride * 2);
-  ctx.drawImage(heroSprite, -90, -120);
+  if (player.attackAnim > 0) ctx.rotate((player.facing || 1) * weaponSwing * 0.1);
+  ctx.drawImage(heroSpriteMap[activeDirection], -90, -120);
   ctx.restore();
 
-  ctx.fillStyle = '#4a3828';
-  ctx.fillRect(-18, 40, 10, 20 + Math.max(0, stride) * 6);
-  ctx.fillRect(8, 40, 10, 20 + Math.max(0, -stride) * 6);
-
-  ctx.save();
-  ctx.translate(36, -2);
-  ctx.rotate(-0.5 + weaponSwing + (player.spinAnim > 0 ? elapsed * 0.05 : 0));
-  ctx.fillStyle = '#90a1af';
-  ctx.fillRect(-4, 0, 8, 58);
-  ctx.fillStyle = '#e5eef5';
-  ctx.beginPath();
-  ctx.moveTo(-10, -44);
-  ctx.lineTo(10, -4);
-  ctx.lineTo(4, 18);
-  ctx.lineTo(-8, -4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
+  if (player.attackAnim > 0) {
+    const attackDir = getDirectionFromVector(player.moveX || player.facing, player.moveY || 0, player.direction);
+    const offsets = {
+      n: [0, -56], ne: [34, -44], e: [50, -18], se: [34, 14],
+      s: [0, 28], sw: [-34, 14], w: [-50, -18], nw: [-34, -44], idle: [34, -18],
+    };
+    const [ox, oy] = offsets[attackDir] || offsets.idle;
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.rotate(Math.atan2(oy, ox) + Math.PI / 2 + weaponSwing * 0.2);
+    ctx.fillStyle = 'rgba(160, 222, 255, 0.16)';
+    ctx.fillRect(-10, -48, 20, 52);
+    ctx.fillStyle = '#dfe9f1';
+    ctx.fillRect(-3, -44, 6, 40);
+    ctx.fillStyle = '#a57a52';
+    ctx.fillRect(-4, -2, 8, 16);
+    ctx.restore();
+  }
 
   ctx.restore();
   drawHealthBar(x, y - 64, player.hp / player.maxHp, '#70f0c5');
