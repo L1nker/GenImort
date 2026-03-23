@@ -45,10 +45,31 @@
 
         <section class="log-panel" id="logPanel"></section>
 
+        <section class="inventory-panel hud-panel">
+          <div class="inventory-panel-header">
+            <h2>Bolsa</h2>
+            <span>4 x 5</span>
+          </div>
+          <div class="inventory-grid" id="inventoryGrid"></div>
+        </section>
+
         <div class="bottom-center-hud">
           <div class="status-ticker" id="questText">Explore, lute e fortaleça seu herói.</div>
           <div class="status-ticker alt" id="statusText">Procure recursos, baús e inimigos pelo mapa.</div>
           <div class="hint-line">Pressione <kbd>Enter</kbd> para abrir o menu principal</div>
+        </div>
+      </div>
+
+      <div class="loot-overlay hidden" id="lootOverlay">
+        <div class="loot-window">
+          <header class="loot-header">
+            <div>
+              <h2 id="lootTitle">Baú aberto</h2>
+              <p id="lootSubtitle">Clique nos itens para coletar.</p>
+            </div>
+            <button id="closeLootButton" class="menu-close">Coletar resto</button>
+          </header>
+          <div class="loot-grid" id="lootGrid"></div>
         </div>
       </div>
 
@@ -57,7 +78,7 @@
           <header class="menu-header">
             <div>
               <h1>Menu Principal</h1>
-              <p>Jogo pausado. Gerencie build, inventário e controles.</p>
+              <p>Jogo pausado. Gerencie build, inventário, crafting e controles.</p>
             </div>
             <button id="closeMenuButton" class="menu-close">Fechar</button>
           </header>
@@ -77,13 +98,25 @@
 
             <section class="menu-card">
               <h2>Inventário</h2>
-              <ul class="inventory" id="inventoryList"></ul>
+              <div class="inventory-grid menu-inventory-grid" id="menuInventoryGrid"></div>
+              <ul class="inventory inventory-summary" id="inventoryList"></ul>
             </section>
 
             <section class="menu-card span-2">
               <h2>Árvore de Skills</h2>
               <div class="skill-tree" id="skillTree"></div>
               <p class="skill-note">Clique em uma skill para desbloquear quando tiver pontos.</p>
+            </section>
+
+            <section class="menu-card span-3">
+              <div class="crafting-header">
+                <div>
+                  <h2>Crafting</h2>
+                  <p>Junte 5 itens iguais e pague ouro para fundi-los em uma versão superior.</p>
+                </div>
+                <div class="crafting-gold" id="craftingGoldLabel">Ouro disponível: 0</div>
+              </div>
+              <div class="crafting-list" id="craftingList"></div>
             </section>
           </div>
         </div>

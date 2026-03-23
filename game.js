@@ -7,6 +7,8 @@ const levelValue = document.getElementById('levelValue');
 const xpValue = document.getElementById('xpValue');
 const skillPointsValue = document.getElementById('skillPointsValue');
 const inventoryList = document.getElementById('inventoryList');
+const inventoryGrid = document.getElementById('inventoryGrid');
+const menuInventoryGrid = document.getElementById('menuInventoryGrid');
 const objectiveList = document.getElementById('objectiveList');
 const logPanel = document.getElementById('logPanel');
 const statusText = document.getElementById('statusText');
@@ -19,6 +21,13 @@ const minimapCanvas = document.getElementById('minimapCanvas');
 const minimapCtx = minimapCanvas.getContext('2d');
 const menuOverlay = document.getElementById('menuOverlay');
 const closeMenuButton = document.getElementById('closeMenuButton');
+const lootOverlay = document.getElementById('lootOverlay');
+const lootTitle = document.getElementById('lootTitle');
+const lootSubtitle = document.getElementById('lootSubtitle');
+const lootGrid = document.getElementById('lootGrid');
+const closeLootButton = document.getElementById('closeLootButton');
+const craftingList = document.getElementById('craftingList');
+const craftingGoldLabel = document.getElementById('craftingGoldLabel');
 
 const world = { width: 5200, height: 3800 };
 const keys = new Set();
@@ -36,6 +45,7 @@ const createSpriteCanvas = (width, height) => {
 let elapsed = 0;
 let lastTime = performance.now();
 let isMenuOpen = false;
+let activeChestLoot = null;
 
 const terrainKnolls = Array.from({ length: 96 }, () => ({
   x: random(80, world.width - 80),
@@ -77,6 +87,55 @@ const biomePatches = Array.from({ length: 28 }, () => ({
   hue: Math.random() > 0.5 ? 'forest' : 'gold'
 }));
 
+const ITEM_DEFS = {
+  madeira: { name: 'Madeira', stackable: true, tier: 'base', category: 'resource', order: 1, icon: drawWoodIcon },
+  cristal: { name: 'Cristal', stackable: true, tier: 'base', category: 'resource', order: 2, icon: drawCrystalIcon },
+  erva: { name: 'Erva', stackable: true, tier: 'base', category: 'resource', order: 3, icon: drawHerbIcon },
+  ouro: { name: 'Ouro', stackable: true, tier: 'base', category: 'currency', order: 4, icon: drawGoldIcon },
+  hp_small: { name: 'Poção HP P', stackable: true, tier: 'I', category: 'consumable', order: 10, icon: (s) => drawPotionIcon(s, '#da4368', '#ffd1de') },
+  mp_small: { name: 'Poção MP P', stackable: true, tier: 'I', category: 'consumable', order: 11, icon: (s) => drawPotionIcon(s, '#3f7dff', '#dbe5ff') },
+  hp_medium: { name: 'Poção HP M', stackable: true, tier: 'II', category: 'consumable', order: 12, icon: (s) => drawPotionIcon(s, '#f76f8f', '#ffe0e8') },
+  mp_medium: { name: 'Poção MP M', stackable: true, tier: 'II', category: 'consumable', order: 13, icon: (s) => drawPotionIcon(s, '#61a2ff', '#eef5ff') },
+  agility_potion: { name: 'Poção Agilidade', stackable: true, tier: 'II', category: 'consumable', order: 14, icon: (s) => drawPotionIcon(s, '#4fe0af', '#e2fff4') },
+  rusty_sword: { name: 'Espada Enferrujada', stackable: true, tier: 'I', category: 'equipment', order: 20, icon: (s) => drawSwordIcon(s, '#8f6b4b', '#b18a60') },
+  steel_sword: { name: 'Espada de Aço', stackable: true, tier: 'II', category: 'equipment', order: 21, icon: (s) => drawSwordIcon(s, '#8ea3b8', '#d8ecff') },
+  mithril_sword: { name: 'Espada de Mithril', stackable: true, tier: 'III', category: 'equipment', order: 22, icon: (s) => drawSwordIcon(s, '#7ae8ff', '#effcff') },
+  light_chestplate: { name: 'Peitoral Leve', stackable: true, tier: 'I', category: 'equipment', order: 23, icon: (s) => drawArmorIcon(s, '#8d784d', '#c3b08a') },
+  reinforced_chestplate: { name: 'Peitoral Reforçado', stackable: true, tier: 'II', category: 'equipment', order: 24, icon: (s) => drawArmorIcon(s, '#7689a1', '#d8e7f2') },
+  mithril_chestplate: { name: 'Peitoral de Mithril', stackable: true, tier: 'III', category: 'equipment', order: 25, icon: (s) => drawArmorIcon(s, '#6edff1', '#eefcff') },
+  simple_helm: { name: 'Elmo Simples', stackable: true, tier: 'I', category: 'equipment', order: 26, icon: (s) => drawHelmIcon(s, '#918772', '#d0c4ac') },
+  steel_helm: { name: 'Elmo de Aço', stackable: true, tier: 'II', category: 'equipment', order: 27, icon: (s) => drawHelmIcon(s, '#869db7', '#ebf5ff') },
+  mithril_helm: { name: 'Elmo de Mithril', stackable: true, tier: 'III', category: 'equipment', order: 28, icon: (s) => drawHelmIcon(s, '#72d8ff', '#f2fdff') },
+  simple_leggings: { name: 'Perneiras Simples', stackable: true, tier: 'I', category: 'equipment', order: 29, icon: (s) => drawLeggingsIcon(s, '#8d7655', '#c5aa83') },
+  reinforced_leggings: { name: 'Perneiras Reforçadas', stackable: true, tier: 'II', category: 'equipment', order: 30, icon: (s) => drawLeggingsIcon(s, '#7c8fa7', '#dbe8f8') },
+  mithril_leggings: { name: 'Perneiras de Mithril', stackable: true, tier: 'III', category: 'equipment', order: 31, icon: (s) => drawLeggingsIcon(s, '#72d8ff', '#ebfeff') },
+  simple_gauntlets: { name: 'Manoplas Simples', stackable: true, tier: 'I', category: 'equipment', order: 32, icon: (s) => drawGauntletIcon(s, '#8d7759', '#d3bd9a') },
+  steel_gauntlets: { name: 'Manoplas de Aço', stackable: true, tier: 'II', category: 'equipment', order: 33, icon: (s) => drawGauntletIcon(s, '#7c91a8', '#e4f0ff') },
+  mithril_gauntlets: { name: 'Manoplas de Mithril', stackable: true, tier: 'III', category: 'equipment', order: 34, icon: (s) => drawGauntletIcon(s, '#72d8ff', '#f1ffff') },
+};
+
+const CRAFTING_RECIPES = [
+  { from: 'hp_small', to: 'hp_medium', cost: 26 },
+  { from: 'hp_medium', to: 'agility_potion', cost: 44 },
+  { from: 'mp_small', to: 'mp_medium', cost: 26 },
+  { from: 'rusty_sword', to: 'steel_sword', cost: 80 },
+  { from: 'steel_sword', to: 'mithril_sword', cost: 170 },
+  { from: 'light_chestplate', to: 'reinforced_chestplate', cost: 80 },
+  { from: 'reinforced_chestplate', to: 'mithril_chestplate', cost: 170 },
+  { from: 'simple_helm', to: 'steel_helm', cost: 70 },
+  { from: 'steel_helm', to: 'mithril_helm', cost: 150 },
+  { from: 'simple_leggings', to: 'reinforced_leggings', cost: 70 },
+  { from: 'reinforced_leggings', to: 'mithril_leggings', cost: 150 },
+  { from: 'simple_gauntlets', to: 'steel_gauntlets', cost: 70 },
+  { from: 'steel_gauntlets', to: 'mithril_gauntlets', cost: 150 },
+];
+
+const commonChestItems = ['hp_small', 'mp_small'];
+const rareChestPotions = ['hp_medium', 'mp_medium', 'agility_potion'];
+const rareChestEquipment = ['rusty_sword', 'light_chestplate', 'simple_helm', 'simple_leggings', 'simple_gauntlets'];
+
+const itemIcons = buildItemIcons();
+
 const player = {
   x: 460,
   y: 420,
@@ -101,7 +160,32 @@ const player = {
   xp: 0,
   nextLevelXp: 55,
   skillPoints: 0,
-  inventory: { madeira: 0, cristal: 0, erva: 0, ouro: 0 },
+  inventory: {
+    madeira: 0,
+    cristal: 0,
+    erva: 0,
+    ouro: 0,
+    hp_small: 0,
+    mp_small: 0,
+    hp_medium: 0,
+    mp_medium: 0,
+    agility_potion: 0,
+    rusty_sword: 0,
+    steel_sword: 0,
+    mithril_sword: 0,
+    light_chestplate: 0,
+    reinforced_chestplate: 0,
+    mithril_chestplate: 0,
+    simple_helm: 0,
+    steel_helm: 0,
+    mithril_helm: 0,
+    simple_leggings: 0,
+    reinforced_leggings: 0,
+    mithril_leggings: 0,
+    simple_gauntlets: 0,
+    steel_gauntlets: 0,
+    mithril_gauntlets: 0,
+  },
   skills: {
     endurance: false,
     efficiency: false,
@@ -144,6 +228,7 @@ const resourceTypes = ['madeira', 'cristal', 'erva'];
 const resources = Array.from({ length: 72 }, (_, i) => createResource(resourceTypes[i % 3]));
 
 function createChest() {
+  const rarity = Math.random() > 0.7 ? 'rare' : 'common';
   return {
     x: random(180, world.width - 180),
     y: random(180, world.height - 180),
@@ -151,14 +236,16 @@ function createChest() {
     opened: false,
     gold: Math.floor(random(26, 78)),
     respawnTimer: 0,
-    rarity: Math.random() > 0.7 ? 'rare' : 'common',
+    rarity,
+    pendingLoot: null,
   };
 }
 
 const chests = Array.from({ length: 24 }, () => createChest());
-
 const enemyVariants = ['fang', 'moss', 'ember'];
 const enemies = Array.from({ length: 26 }, () => spawnEnemy());
+
+enemies.forEach((enemy) => { enemy.hp = enemy.maxHp; });
 
 function spawnEnemy() {
   return {
@@ -180,8 +267,6 @@ function spawnEnemy() {
     respawnTimer: 0,
   };
 }
-
-enemies.forEach((enemy) => { enemy.hp = enemy.maxHp; });
 
 function addLog(message) {
   const div = document.createElement('div');
@@ -263,12 +348,60 @@ function updateHud() {
   levelValue.textContent = `${player.level}`;
   xpValue.textContent = `${player.xp} / ${player.nextLevelXp}`;
   skillPointsValue.textContent = `${player.skillPoints}`;
-  inventoryList.innerHTML = Object.entries(player.inventory)
-    .map(([item, amount]) => `<li>${item}: ${amount}</li>`)
-    .join('');
   hpFill.style.width = `${(player.hp / player.maxHp) * 100}%`;
   energyFill.style.width = `${(player.energy / player.maxEnergy) * 100}%`;
   xpFill.style.width = `${(player.xp / player.nextLevelXp) * 100}%`;
+  craftingGoldLabel.textContent = `Ouro disponível: ${player.inventory.ouro}`;
+  renderInventorySummary();
+  renderInventoryGrid(inventoryGrid, false);
+  renderInventoryGrid(menuInventoryGrid, true);
+}
+
+function renderInventorySummary() {
+  const entries = getSortedInventoryEntries().filter(([, amount]) => amount > 0);
+  inventoryList.innerHTML = entries.length
+    ? entries.map(([id, amount]) => `<li>${ITEM_DEFS[id].name}: ${amount}</li>`).join('')
+    : '<li>Inventário vazio.</li>';
+}
+
+function getSortedInventoryEntries() {
+  return Object.entries(player.inventory).sort((a, b) => (ITEM_DEFS[a[0]].order || 999) - (ITEM_DEFS[b[0]].order || 999));
+}
+
+function renderInventoryGrid(target, showNames = false) {
+  target.innerHTML = '';
+  const entries = getSortedInventoryEntries().filter(([, amount]) => amount > 0).slice(0, 20);
+  for (let i = 0; i < 20; i += 1) {
+    const slot = document.createElement('div');
+    slot.className = 'inventory-slot';
+    const entry = entries[i];
+    if (!entry) {
+      slot.classList.add('empty');
+      target.appendChild(slot);
+      continue;
+    }
+    const [id, amount] = entry;
+    const item = ITEM_DEFS[id];
+    const img = document.createElement('img');
+    img.src = itemIcons[id];
+    img.alt = item.name;
+    slot.appendChild(img);
+    if (showNames || target === inventoryGrid) {
+      const label = document.createElement('span');
+      label.className = 'inventory-name';
+      label.textContent = item.name;
+      slot.appendChild(label);
+    }
+    const count = document.createElement('span');
+    count.className = 'inventory-count';
+    count.textContent = amount;
+    slot.appendChild(count);
+    const tier = document.createElement('span');
+    tier.className = 'inventory-tier';
+    tier.textContent = item.tier;
+    slot.appendChild(tier);
+    target.appendChild(slot);
+  }
 }
 
 function handleInput() {
@@ -302,7 +435,7 @@ function handleInput() {
 }
 
 function attack() {
-  if (player.attackCooldown > 0) return;
+  if (player.attackCooldown > 0 || activeChestLoot) return;
   player.attackCooldown = 24;
   player.attackAnim = 20;
   let hits = 0;
@@ -317,7 +450,7 @@ function attack() {
 }
 
 function spinSkill() {
-  if (player.spinCooldown > 0 || player.energy < 24) return;
+  if (player.spinCooldown > 0 || player.energy < 24 || activeChestLoot) return;
   player.spinCooldown = 132;
   player.energy -= 24;
   player.spinAnim = 28;
@@ -336,9 +469,20 @@ function defeatEnemy(enemy) {
   enemy.alive = false;
   enemy.respawnTimer = player.skills.fortune ? 3200 : 4400;
   gainXp(20 + Math.floor(enemy.maxHp * 0.12));
-  player.inventory.ouro += 6 + (player.skills.fortune ? 3 : 0);
+  addInventoryItem('ouro', 6 + (player.skills.fortune ? 3 : 0));
   updateObjective(2, 1);
   addLog('Inimigo derrotado. Você recebeu XP e ouro.');
+}
+
+function addInventoryItem(id, amount = 1) {
+  if (!(id in player.inventory)) player.inventory[id] = 0;
+  player.inventory[id] += amount;
+}
+
+function consumeInventoryItem(id, amount = 1) {
+  if (!player.inventory[id] || player.inventory[id] < amount) return false;
+  player.inventory[id] -= amount;
+  return true;
 }
 
 function respawnEntity(entity, factory) {
@@ -348,16 +492,17 @@ function respawnEntity(entity, factory) {
 }
 
 function interact() {
+  if (activeChestLoot) return;
   let interacted = false;
   for (const resource of resources) {
     if (!resource.collected && distance(player, resource) <= 60) {
       resource.collected = true;
       resource.respawnTimer = random(18000, 28000);
       const gain = player.skills.efficiency ? 2 : 1;
-      player.inventory[resource.type] += gain;
+      addInventoryItem(resource.type, gain);
       gainXp(8);
       updateObjective(1, 1);
-      addLog(`Você coletou ${gain}x ${resource.type}. O ponto voltará a brotar depois.`);
+      addLog(`Você coletou ${gain}x ${ITEM_DEFS[resource.type].name}. O ponto voltará a brotar depois.`);
       interacted = true;
       break;
     }
@@ -366,15 +511,7 @@ function interact() {
   if (!interacted) {
     for (const chest of chests) {
       if (!chest.opened && distance(player, chest) <= 54) {
-        chest.opened = true;
-        chest.respawnTimer = player.skills.fortune ? random(24000, 38000) : random(36000, 52000);
-        const multiplier = chest.rarity === 'rare' ? 1.8 : 1;
-        const bonus = player.skills.fortune ? 1.4 : 1;
-        const gold = Math.floor(chest.gold * multiplier * bonus);
-        player.inventory.ouro += gold;
-        gainXp(chest.rarity === 'rare' ? 28 : 18);
-        updateObjective(0, 1);
-        addLog(`Baú ${chest.rarity === 'rare' ? 'raro' : 'comum'} aberto! Você ganhou ${gold} de ouro.`);
+        openChest(chest);
         interacted = true;
         break;
       }
@@ -382,6 +519,115 @@ function interact() {
   }
 
   if (!interacted) addLog('Nada para interagir por perto.');
+  updateHud();
+}
+
+function openChest(chest) {
+  chest.opened = true;
+  chest.respawnTimer = player.skills.fortune ? random(24000, 38000) : random(36000, 52000);
+  chest.pendingLoot = rollChestLoot(chest);
+  if (chest.pendingLoot.xp > 0) {
+    gainXp(chest.pendingLoot.xp);
+    addLog(`XP do baú absorvido automaticamente: +${chest.pendingLoot.xp}.`);
+  }
+  updateObjective(0, 1);
+  addLog(`Baú ${chest.rarity === 'rare' ? 'raro' : 'comum'} aberto! Clique nos itens para coletá-los.`);
+  showLootOverlay(chest);
+}
+
+function rollChestLoot(chest) {
+  const multiplier = chest.rarity === 'rare' ? 1.8 : 1;
+  const bonus = player.skills.fortune ? 1.4 : 1;
+  const goldAmount = Math.floor(chest.gold * multiplier * bonus);
+  const loot = [];
+  let xp = 0;
+
+  loot.push(makeLootEntry('ouro', goldAmount));
+
+  if (chest.rarity === 'common') {
+    loot.push(makeLootEntry(pickOne(commonChestItems), 1));
+    if (Math.random() < 0.25) loot.push(makeLootEntry(pickOne(commonChestItems), 1));
+    if (Math.random() < 0.18) loot.push(makeLootEntry(randomResource(), 1));
+  } else {
+    loot.push(makeLootEntry(pickOne(rareChestPotions), 1));
+    loot.push(makeLootEntry(pickOne(rareChestEquipment), 1));
+    if (Math.random() < 0.4) xp = 28;
+    if (Math.random() < 0.28) {
+      const extraPool = [...rareChestPotions, ...rareChestEquipment];
+      loot.push(makeLootEntry(pickOne(extraPool), 1));
+    }
+  }
+
+  return { xp, loot, collected: false };
+}
+
+function makeLootEntry(itemId, amount = 1) {
+  return { id: `${itemId}-${Math.random().toString(36).slice(2, 8)}`, itemId, amount, collected: false };
+}
+
+function pickOne(list) {
+  return list[Math.floor(random(0, list.length))];
+}
+
+function randomResource() {
+  return pickOne(resourceTypes);
+}
+
+function showLootOverlay(chest) {
+  activeChestLoot = chest;
+  lootTitle.textContent = `Baú ${chest.rarity === 'rare' ? 'raro' : 'comum'}`;
+  lootSubtitle.textContent = chest.pendingLoot.xp > 0
+    ? `XP +${chest.pendingLoot.xp} já foi coletado. Clique nos itens abaixo.`
+    : 'Clique nos itens para mover para o inventário.';
+  lootOverlay.classList.remove('hidden');
+  renderLootOverlay();
+}
+
+function renderLootOverlay() {
+  lootGrid.innerHTML = '';
+  if (!activeChestLoot || !activeChestLoot.pendingLoot) return;
+  for (const entry of activeChestLoot.pendingLoot.loot) {
+    const item = ITEM_DEFS[entry.itemId];
+    const card = document.createElement('button');
+    card.className = `loot-slot ${entry.collected ? 'collected' : 'collectable'}`;
+    card.disabled = entry.collected;
+    card.innerHTML = `
+      <div class="loot-slot-body">
+        <img src="${itemIcons[entry.itemId]}" alt="${item.name}" />
+        <strong>${item.name}</strong>
+        <small>${entry.collected ? 'Coletado' : 'Clique para coletar'}</small>
+      </div>
+      <span class="loot-count">x${entry.amount}</span>
+    `;
+    card.addEventListener('click', () => collectLootEntry(entry.id));
+    lootGrid.appendChild(card);
+  }
+}
+
+function collectLootEntry(entryId) {
+  if (!activeChestLoot?.pendingLoot) return;
+  const entry = activeChestLoot.pendingLoot.loot.find((item) => item.id === entryId);
+  if (!entry || entry.collected) return;
+  entry.collected = true;
+  addInventoryItem(entry.itemId, entry.amount);
+  addLog(`Item coletado do baú: ${ITEM_DEFS[entry.itemId].name} x${entry.amount}.`);
+  updateHud();
+  renderLootOverlay();
+  if (activeChestLoot.pendingLoot.loot.every((item) => item.collected)) closeLootOverlay();
+}
+
+function closeLootOverlay() {
+  if (activeChestLoot?.pendingLoot) {
+    for (const entry of activeChestLoot.pendingLoot.loot) {
+      if (!entry.collected) {
+        entry.collected = true;
+        addInventoryItem(entry.itemId, entry.amount);
+      }
+    }
+    addLog('Itens restantes do baú foram coletados automaticamente.');
+  }
+  lootOverlay.classList.add('hidden');
+  activeChestLoot = null;
   updateHud();
 }
 
@@ -397,6 +643,8 @@ function updateResources(delta) {
 
   for (const chest of chests) {
     if (!chest.opened) continue;
+    const stillHasUncollectedLoot = chest === activeChestLoot && chest.pendingLoot?.loot?.some((item) => !item.collected);
+    if (stillHasUncollectedLoot) continue;
     chest.respawnTimer -= delta;
     if (chest.respawnTimer <= 0) {
       respawnEntity(chest, createChest);
@@ -444,6 +692,236 @@ function updateEnemies(delta) {
     enemy.attackCooldown = Math.max(0, enemy.attackCooldown - 1);
     enemy.attackAnim = Math.max(0, enemy.attackAnim - 1);
   }
+}
+
+function craftItem(recipe) {
+  if (player.inventory[recipe.from] < 5) return;
+  if (player.inventory.ouro < recipe.cost) return;
+  consumeInventoryItem(recipe.from, 5);
+  consumeInventoryItem('ouro', recipe.cost);
+  addInventoryItem(recipe.to, 1);
+  addLog(`Craft realizado: 5x ${ITEM_DEFS[recipe.from].name} viraram 1x ${ITEM_DEFS[recipe.to].name}.`);
+  renderCrafting();
+  updateHud();
+}
+
+function renderCrafting() {
+  craftingList.innerHTML = '';
+  for (const recipe of CRAFTING_RECIPES) {
+    const fromItem = ITEM_DEFS[recipe.from];
+    const toItem = ITEM_DEFS[recipe.to];
+    const card = document.createElement('div');
+    card.className = 'craft-card';
+    const canCraft = player.inventory[recipe.from] >= 5 && player.inventory.ouro >= recipe.cost;
+    card.innerHTML = `
+      <div class="craft-preview">
+        ${renderIconSlot(recipe.from, player.inventory[recipe.from], true)}
+        <div class="craft-arrow">➜</div>
+        ${renderIconSlot(recipe.to, player.inventory[recipe.to], true)}
+      </div>
+      <div class="craft-meta">
+        <h3>${fromItem.name} → ${toItem.name}</h3>
+        <p>Exige 5 unidades e ${recipe.cost} de ouro.</p>
+      </div>
+      <button class="craft-button" ${canCraft ? '' : 'disabled'}>Fundir</button>
+    `;
+    card.querySelector('.craft-button').addEventListener('click', () => craftItem(recipe));
+    craftingList.appendChild(card);
+  }
+}
+
+function renderIconSlot(itemId, amount, compact = false) {
+  const item = ITEM_DEFS[itemId];
+  return `
+    <div class="inventory-slot ${amount ? '' : 'empty'}">
+      <img src="${itemIcons[itemId]}" alt="${item.name}" />
+      <span class="inventory-name">${compact ? item.name : item.name}</span>
+      <span class="inventory-count">${amount}</span>
+      <span class="inventory-tier">${item.tier}</span>
+    </div>
+  `;
+}
+
+function buildItemIcons() {
+  const icons = {};
+  Object.entries(ITEM_DEFS).forEach(([id, item]) => {
+    const { sprite, ctx: s } = createSpriteCanvas(64, 64);
+    s.fillStyle = 'rgba(16, 22, 35, 0.94)';
+    s.fillRect(0, 0, 64, 64);
+    s.strokeStyle = 'rgba(162, 184, 255, 0.18)';
+    s.lineWidth = 2;
+    s.strokeRect(1, 1, 62, 62);
+    item.icon(s);
+    icons[id] = sprite.toDataURL('image/png');
+  });
+  return icons;
+}
+
+function drawWoodIcon(s) {
+  s.translate(32, 32);
+  s.fillStyle = '#5f4126';
+  s.fillRect(-8, 8, 16, 18);
+  s.fillStyle = '#43a355';
+  for (let i = 0; i < 3; i += 1) {
+    s.beginPath();
+    s.arc(0, -6 - i * 6, 14 - i, 0, Math.PI * 2);
+    s.fill();
+  }
+}
+
+function drawCrystalIcon(s) {
+  s.translate(32, 34);
+  [[0, -10, '#74ebff'], [-12, 8, '#56cce8'], [12, 10, '#b2fbff']].forEach(([x, y, c]) => {
+    s.fillStyle = c;
+    s.beginPath();
+    s.moveTo(x, y - 16);
+    s.lineTo(x + 10, y);
+    s.lineTo(x + 4, y + 18);
+    s.lineTo(x - 4, y + 18);
+    s.lineTo(x - 10, y);
+    s.closePath();
+    s.fill();
+  });
+}
+
+function drawHerbIcon(s) {
+  s.translate(32, 38);
+  for (let i = 0; i < 5; i += 1) {
+    s.save();
+    s.rotate(-0.6 + i * 0.3);
+    s.fillStyle = i % 2 ? '#77d85e' : '#46b54f';
+    s.beginPath();
+    s.moveTo(0, 10);
+    s.quadraticCurveTo(5, -2, 0, -18);
+    s.quadraticCurveTo(-5, -2, 0, 10);
+    s.fill();
+    s.restore();
+  }
+  s.fillStyle = '#f8df76';
+  s.beginPath();
+  s.arc(0, -4, 5, 0, Math.PI * 2);
+  s.fill();
+}
+
+function drawGoldIcon(s) {
+  s.translate(32, 32);
+  s.fillStyle = '#f0d064';
+  for (let i = 0; i < 4; i += 1) {
+    s.beginPath();
+    s.arc(-10 + i * 8, 6 - i * 3, 9, 0, Math.PI * 2);
+    s.fill();
+  }
+  s.strokeStyle = '#fff3a5';
+  s.lineWidth = 2;
+  s.strokeRect(-14, -8, 28, 20);
+}
+
+function drawPotionIcon(s, liquidColor, glowColor) {
+  s.translate(32, 34);
+  s.fillStyle = '#d9edff';
+  s.fillRect(-7, -26, 14, 10);
+  s.fillStyle = '#7d6141';
+  s.fillRect(-6, -30, 12, 7);
+  s.strokeStyle = '#f3f8ff';
+  s.lineWidth = 3;
+  s.beginPath();
+  s.moveTo(-14, -16);
+  s.lineTo(-12, 12);
+  s.quadraticCurveTo(-9, 24, 0, 24);
+  s.quadraticCurveTo(9, 24, 12, 12);
+  s.lineTo(14, -16);
+  s.closePath();
+  s.stroke();
+  s.fillStyle = liquidColor;
+  s.beginPath();
+  s.moveTo(-11, -2);
+  s.lineTo(-9, 10);
+  s.quadraticCurveTo(-6, 18, 0, 18);
+  s.quadraticCurveTo(6, 18, 9, 10);
+  s.lineTo(11, -2);
+  s.closePath();
+  s.fill();
+  s.fillStyle = glowColor;
+  s.globalAlpha = 0.35;
+  s.beginPath();
+  s.arc(0, 4, 18, 0, Math.PI * 2);
+  s.fill();
+  s.globalAlpha = 1;
+}
+
+function drawSwordIcon(s, bladeColor, glowColor) {
+  s.translate(32, 32);
+  s.rotate(-0.45);
+  s.fillStyle = bladeColor;
+  s.fillRect(-3, -20, 6, 30);
+  s.fillStyle = glowColor;
+  s.beginPath();
+  s.moveTo(-6, -24);
+  s.lineTo(0, -30);
+  s.lineTo(6, -24);
+  s.closePath();
+  s.fill();
+  s.fillRect(-11, 8, 22, 5);
+  s.fillStyle = '#7a4d22';
+  s.fillRect(-3, 8, 6, 18);
+}
+
+function drawArmorIcon(s, bodyColor, trimColor) {
+  s.translate(32, 34);
+  s.fillStyle = bodyColor;
+  s.beginPath();
+  s.moveTo(-16, -18);
+  s.lineTo(-5, -24);
+  s.lineTo(5, -24);
+  s.lineTo(16, -18);
+  s.lineTo(12, 18);
+  s.lineTo(-12, 18);
+  s.closePath();
+  s.fill();
+  s.fillStyle = trimColor;
+  s.fillRect(-10, -8, 20, 6);
+  s.fillRect(-7, 0, 14, 14);
+}
+
+function drawHelmIcon(s, bodyColor, trimColor) {
+  s.translate(32, 34);
+  s.fillStyle = bodyColor;
+  s.beginPath();
+  s.arc(0, -4, 18, Math.PI, 0);
+  s.lineTo(14, 16);
+  s.lineTo(-14, 16);
+  s.closePath();
+  s.fill();
+  s.fillStyle = trimColor;
+  s.fillRect(-13, 0, 26, 6);
+  s.fillStyle = '#09131d';
+  s.fillRect(-8, 2, 16, 7);
+}
+
+function drawLeggingsIcon(s, bodyColor, trimColor) {
+  s.translate(32, 36);
+  s.fillStyle = bodyColor;
+  s.fillRect(-12, -20, 24, 12);
+  s.fillRect(-11, -8, 9, 28);
+  s.fillRect(2, -8, 9, 28);
+  s.fillStyle = trimColor;
+  s.fillRect(-12, -20, 24, 5);
+}
+
+function drawGauntletIcon(s, bodyColor, trimColor) {
+  s.translate(32, 34);
+  s.fillStyle = bodyColor;
+  s.beginPath();
+  s.moveTo(-14, 8);
+  s.lineTo(-8, -8);
+  s.lineTo(8, -12);
+  s.lineTo(14, -2);
+  s.lineTo(8, 14);
+  s.lineTo(-10, 16);
+  s.closePath();
+  s.fill();
+  s.fillStyle = trimColor;
+  s.fillRect(-8, -2, 12, 5);
 }
 
 function makeHeroSprite() {
@@ -992,7 +1470,10 @@ function resizeCanvas() {
 function setMenuOpen(open) {
   isMenuOpen = open;
   menuOverlay.classList.toggle('hidden', !open);
-  if (open) keys.clear();
+  if (open) {
+    keys.clear();
+    renderCrafting();
+  }
 }
 
 function tickAnimations() {
@@ -1006,7 +1487,7 @@ function loop(now = performance.now()) {
   const delta = now - lastTime;
   lastTime = now;
 
-  if (!isMenuOpen) {
+  if (!isMenuOpen && !activeChestLoot) {
     elapsed += delta;
     handleInput();
     updateResources(delta);
@@ -1023,7 +1504,9 @@ function loop(now = performance.now()) {
   }
 
   questText.textContent = `Mapa aberto ampliado: ${Math.round(player.x)}, ${Math.round(player.y)} / ${world.width} x ${world.height}.`;
-  statusText.textContent = `Recursos reaparecem, baús retornam e monstros seguem rondando o mundo.`;
+  statusText.textContent = activeChestLoot
+    ? 'Baú aberto: clique nos itens para coletar.'
+    : 'Recursos reaparecem, baús retornam e monstros seguem rondando o mundo.';
   updateCamera();
   drawWorld();
   drawMinimap();
@@ -1035,10 +1518,11 @@ document.addEventListener('keydown', (event) => {
   const key = event.key.toLowerCase();
   if (key === 'enter') {
     event.preventDefault();
+    if (activeChestLoot) return;
     setMenuOpen(!isMenuOpen);
     return;
   }
-  if (isMenuOpen) return;
+  if (isMenuOpen || activeChestLoot) return;
   keys.add(key);
   if (key === 'j') attack();
   if (key === 'k') spinSkill();
@@ -1048,10 +1532,12 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
 window.addEventListener('resize', resizeCanvas);
 closeMenuButton.addEventListener('click', () => setMenuOpen(false));
+closeLootButton.addEventListener('click', closeLootOverlay);
 
 resizeCanvas();
 renderObjectives();
 renderSkillTree();
+renderCrafting();
 updateHud();
 drawMinimap();
 addLog('Bem-vindo ao GenImort expandido. Pressione Enter para abrir o menu principal.');
